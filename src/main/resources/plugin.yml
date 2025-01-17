@@ -1,0 +1,11 @@
+name: Colina
+author: Sebastian Erives
+version: '1.0.0'
+main: org.deltacv.colina.Colina
+api-version: '1.21'
+softdepend: ['Multiverse-Core', 'WorldBorderApi']
+
+commands:
+  colina:
+    description: "Colina plugin management"
+    usage: "colina <join|config|available|tp>"
