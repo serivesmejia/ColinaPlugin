@@ -1,6 +1,5 @@
 package org.deltacv.colina.arena;
 
-import com.github.yannicklamprecht.worldborder.api.WorldBorderApi;
 import com.google.gson.Gson;
 import com.onarandombox.MultiverseCore.MultiverseCore;
 import com.onarandombox.MultiverseCore.api.MultiverseWorld;
@@ -30,7 +29,6 @@ public class ArenaManager {
     public HashMap<Arena, MultiverseWorld> activeArenas = new HashMap<>();
 
     MultiverseCore mvCore;
-    WorldBorderApi worldBorderApi;
 
     JavaPlugin plugin;
     Logger log;
@@ -41,16 +39,6 @@ public class ArenaManager {
     public ArenaManager(JavaPlugin plugin) {
         this.plugin = plugin;
         mvCore = (MultiverseCore) plugin.getServer().getPluginManager().getPlugin("Multiverse-Core");
-
-        RegisteredServiceProvider<WorldBorderApi> worldBorderApiRegisteredServiceProvider = plugin.getServer().getServicesManager().getRegistration(WorldBorderApi.class);
-
-        if (worldBorderApiRegisteredServiceProvider == null) {
-            log.info("WorldBorderAPI not found");
-            plugin.getServer().getPluginManager().disablePlugin(plugin);
-            return;
-        }
-
-        worldBorderApi = worldBorderApiRegisteredServiceProvider.getProvider();
 
         this.log = plugin.getLogger();
 
@@ -157,7 +145,7 @@ public class ArenaManager {
         MultiverseWorld templateWorld = mvCore.getMVWorldManager().getMVWorld(worldData.templateWorldName);
 
         if(templateWorld == null) {
-            plugin.getServer().broadcastMessage("[Colina] Error: No se pudo encontrar el mundo de plantilla. No se puede crear una arena.");
+            plugin.getServer().broadcastMessage(ChatColor.RED +"[Colina] Error: No se pudo encontrar el mundo de plantilla. No se puede crear una arena.");
             return null;
         }
 
@@ -168,7 +156,7 @@ public class ArenaManager {
         MultiverseWorld newWorld = mvCore.getMVWorldManager().getMVWorld(newWorldName);
 
         if(newWorld == null) {
-            plugin.getServer().broadcastMessage("[Colina] Error: No se pudo clonar el mundo de plantilla. No se puede crear una arena.");
+            plugin.getServer().broadcastMessage(ChatColor.RED +"[Colina] Error: No se pudo clonar el mundo de plantilla. No se puede crear una arena.");
             return null;
         }
 
@@ -178,6 +166,8 @@ public class ArenaManager {
         newWorld.getCBWorld().setGameRule(GameRule.DO_MOB_SPAWNING, false);
         newWorld.getCBWorld().setGameRule(GameRule.DO_DAYLIGHT_CYCLE, false);
         newWorld.getCBWorld().setGameRule(GameRule.DO_INSOMNIA, false);
+
+        log.info("Created arena " + newWorldName);
 
         Location lobbyLocation = new Location(
                 newWorld.getCBWorld(),

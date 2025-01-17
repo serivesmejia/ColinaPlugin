@@ -93,10 +93,6 @@ public class Arena extends BukkitRunnable {
                 int seconds = 10 - (int) elapsedSecondsSinceStartingCountdown();
 
                 if(seconds == 0) {
-                    for(Player player : players) {
-                        player.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "A pelear !");
-                        player.playSound(player.getLocation(), "entity.ender_dragon.growl", 1, 1);
-                    }
                     status = ArenaStatus.BEGIN;
                 } else if(seconds != lastStartingCountdownSeconds) {
                     // broadcast countdown message
@@ -112,6 +108,7 @@ public class Arena extends BukkitRunnable {
             }
 
             case BEGIN -> {
+                manager.log.info("Begin game in arena " + newWorldName);
                 gameStartTimestamp = System.currentTimeMillis();
 
                 // give stick with knockback
@@ -128,8 +125,8 @@ public class Arena extends BukkitRunnable {
                     // give stick with knockback
                     player.getInventory().addItem(stick);
                     player.teleport(gameLocation);
-
-                    manager.worldBorderApi.setBorder(player, manager.getZoneSize(), gameLocation);
+                    player.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "A pelear !");
+                    player.playSound(player.getLocation(), "entity.ender_dragon.growl", 1, 1);
                 }
 
                 status = ArenaStatus.PLAYING;
