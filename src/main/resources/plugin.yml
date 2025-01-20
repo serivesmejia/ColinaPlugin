@@ -8,4 +8,4 @@ softdepend: ['Multiverse-Core', 'WorldBorderApi']
 commands:
   colina:
     description: "Colina plugin management"
-    usage: "colina <join|config|available|tp>"
+    usage: "colina <join|config|arenas|tp|start|stop>"

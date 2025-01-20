@@ -9,8 +9,8 @@ version = '1.0.0'
 repositories {
     mavenCentral()
     maven {
-        name = "spigotmc-repo"
-        url = "https://hub.spigotmc.org/nexus/content/repositories/snapshots/"
+        name = "papermc"
+        url = uri("https://repo.papermc.io/repository/maven-public/")
     }
     maven {
         name = "sonatype"
@@ -20,11 +20,20 @@ repositories {
         name = "onarandombox"
         url = "https://repo.onarandombox.com/content/groups/public/"
     }
+    maven { url 'https://jitpack.io' }
 }
 
 dependencies {
-    compileOnly("org.spigotmc:spigot-api:1.21.3-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.3-R0.1-SNAPSHOT")
     compileOnly 'com.onarandombox.multiversecore:Multiverse-Core:4.3.1'
+    compileOnly "com.github.MilkBowl:VaultAPI:1.7"
+
+    var scoreboardLibraryVersion = "2.2.2"
+    implementation("net.megavex:scoreboard-library-api:$scoreboardLibraryVersion")
+    runtimeOnly("net.megavex:scoreboard-library-implementation:$scoreboardLibraryVersion")
+
+    // Add packet adapter implementations you want:
+    runtimeOnly("net.megavex:scoreboard-library-modern:$scoreboardLibraryVersion") // 1.17+
 }
 
 def targetJavaVersion = 21

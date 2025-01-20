@@ -31,6 +31,7 @@ public final class Colina extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         arenaManager.saveWorldData();
+        arenaManager.close();
     }
 
     @EventHandler

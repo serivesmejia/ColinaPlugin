@@ -3,6 +3,10 @@ package org.deltacv.colina.arena;
 import com.google.gson.Gson;
 import com.onarandombox.MultiverseCore.MultiverseCore;
 import com.onarandombox.MultiverseCore.api.MultiverseWorld;
+import net.megavex.scoreboardlibrary.api.ScoreboardLibrary;
+import net.megavex.scoreboardlibrary.api.exception.NoPacketAdapterAvailableException;
+import net.megavex.scoreboardlibrary.api.noop.NoopScoreboardLibrary;
+import net.milkbowl.vault.economy.Economy;
 import org.bukkit.ChatColor;
 import org.bukkit.GameRule;
 import org.bukkit.Location;
@@ -16,9 +20,11 @@ import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static org.bukkit.Bukkit.getServer;
+
 public class ArenaManager {
 
-    public static final String ARENA_WORLD_PREFIX = "mlira_colina_";
+    public static final String ARENA_WORLD_PREFIX = "__colina__";
 
     ArenaWorldData worldData = new ArenaWorldData();
 
@@ -29,6 +35,8 @@ public class ArenaManager {
     public HashMap<Arena, MultiverseWorld> activeArenas = new HashMap<>();
 
     MultiverseCore mvCore;
+    Economy econ;
+    ScoreboardLibrary scoreboardLibrary;
 
     JavaPlugin plugin;
     Logger log;
@@ -38,11 +46,35 @@ public class ArenaManager {
 
     public ArenaManager(JavaPlugin plugin) {
         this.plugin = plugin;
-        mvCore = (MultiverseCore) plugin.getServer().getPluginManager().getPlugin("Multiverse-Core");
-
         this.log = plugin.getLogger();
 
+        mvCore = (MultiverseCore) plugin.getServer().getPluginManager().getPlugin("Multiverse-Core");
+
+        if (getServer().getPluginManager().getPlugin("Vault") == null) {
+            log.severe("Vault not found, disabling plugin.");
+            getServer().getPluginManager().disablePlugin(plugin);
+        }
+        RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);
+        if (rsp == null) {
+            log.severe("Economy not found, disabling plugin.");
+            getServer().getPluginManager().disablePlugin(plugin);
+        }
+
+        econ = rsp.getProvider();
+
+        try {
+            scoreboardLibrary = ScoreboardLibrary.loadScoreboardLibrary(plugin);
+        } catch (NoPacketAdapterAvailableException e) {
+            // If no packet adapter was found, you can fallback to the no-op implementation:
+            scoreboardLibrary = new NoopScoreboardLibrary();
+            plugin.getLogger().warning("No scoreboard packet adapter available!");
+        }
+
         worldDataFile = new File(plugin.getDataFolder(), "worldData.json");
+    }
+
+    public void close() {
+        scoreboardLibrary.close();
     }
 
     public void purgeUnusedArenas() {
@@ -92,6 +124,7 @@ public class ArenaManager {
                 }
 
                 // save new locations to worldData
+                // rounds up to be at the center of the block
                 worldData.lobbyX = newLobbyLocation.getX();
                 worldData.lobbyY = newLobbyLocation.getY();
                 worldData.lobbyZ = newLobbyLocation.getZ();
@@ -150,7 +183,8 @@ public class ArenaManager {
         }
 
         // copy the template world to a new world
-        String newWorldName = ARENA_WORLD_PREFIX + System.currentTimeMillis();
+        // truncate currentTimeMilliseconds to the last 5 digits
+        String newWorldName = ARENA_WORLD_PREFIX + (System.currentTimeMillis() + "").substring(5);
         mvCore.getMVWorldManager().cloneWorld(worldData.templateWorldName, newWorldName);
 
         MultiverseWorld newWorld = mvCore.getMVWorldManager().getMVWorld(newWorldName);
@@ -171,16 +205,16 @@ public class ArenaManager {
 
         Location lobbyLocation = new Location(
                 newWorld.getCBWorld(),
-                (int) worldData.lobbyX,
-                (int) worldData.lobbyY,
-                (int) worldData.lobbyZ
+                worldData.lobbyX,
+                worldData.lobbyY,
+                worldData.lobbyZ
         );
 
         Location gameLocation = new Location(
                 newWorld.getCBWorld(),
-                (int) worldData.gameX,
-                (int) worldData.gameY,
-                (int) worldData.gameZ
+                worldData.gameX,
+                worldData.gameY,
+                worldData.gameZ
         );
 
         Arena arena = new Arena(this, lobbyLocation, gameLocation);
@@ -217,6 +251,7 @@ public class ArenaManager {
         MultiverseWorld world = activeArenas.get(arena);
         mvCore.getMVWorldManager().deleteWorld(world.getName());
 
+        arena.cancel();
         activeArenas.remove(arena);
     }
 
@@ -232,6 +267,10 @@ public class ArenaManager {
     }
     public int getGameDurationSeconds() {
         return plugin.getConfig().getInt("gameDurationSeconds");
+    }
+
+    public int getPointsToWin() {
+        return plugin.getConfig().getInt("pointsToWin");
     }
 
     public int getZoneSize() {
