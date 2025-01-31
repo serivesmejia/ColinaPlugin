@@ -52,6 +52,7 @@ public class Arena extends BukkitRunnable {
     long resultsTimestamp = -1;
     long resultsLastFireworkTimestamp = System.currentTimeMillis();
 
+    int playersCountOnBegin = -1;
     Player winningPlayer = null;
 
     HashMap<Player, Integer> playerScores = new HashMap<>();
@@ -63,12 +64,18 @@ public class Arena extends BukkitRunnable {
 
     Sidebar sidebar;
 
+    ItemStack exitItem = new ItemStack(Material.RED_BED);
+
     boolean hasSentStartWithMinPlayersMessage = false;
 
     int lastStartingCountdownSeconds = -1;
 
     public Arena(ArenaManager manager, Location lobbyLocation, Location gameLocation) {
         this.manager = manager;
+
+        ItemMeta im = Objects.requireNonNull(exitItem.getItemMeta());
+        im.setDisplayName(ChatColor.RED + "" + ChatColor.BOLD + "Salir al Lobby");
+        exitItem.setItemMeta(im);
 
         sidebar = manager.scoreboardLibrary.createSidebar();
 
@@ -130,6 +137,7 @@ public class Arena extends BukkitRunnable {
                 for (Player player : players) {
                     player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacy(ChatColor.YELLOW + "" + ChatColor.BOLD + "Esperando jugadores... (" + players.size() + "/" + manager.getMaxPlayersPerArena() + ")"));
                     player.setGameMode(GameMode.ADVENTURE);
+                    player.getInventory().setItem(8, exitItem);
                 }
             }
 
@@ -175,11 +183,14 @@ public class Arena extends BukkitRunnable {
             }
 
             case BEGIN -> {
+                playersCountOnBegin = players.size();
+
                 manager.log.info("Begin game in arena " + gameLocation.getWorld().getName());
 
                 spawnZoneBorder();
 
                 for (Player player : players) {
+                    player.getInventory().clear();
                     player.sendMessage(ChatColor.GREEN + "La partida se acabará con el primer jugador que obtenga " + manager.getPointsToWin() + " puntos !");
                     player.teleport(gameLocation);
                 }
@@ -256,11 +267,6 @@ public class Arena extends BukkitRunnable {
                     }
                 }
 
-                if (remainingTimeSecs <= 0 || players.size() <= 1) {
-                    status = ArenaStatus.RESULTS;
-                    break;
-                }
-
                 previousRemainingTimeSecs = (int) remainingTimeSecs;
 
                 int remainingMinutes = (int) (remainingTimeSecs) / 60;
@@ -282,6 +288,11 @@ public class Arena extends BukkitRunnable {
                     Map.Entry<Player, Integer> entry = topScores.get(i);
                     // sidebar with #n player name and score
                     sidebar.line(6 + i, Component.text(ChatColor.GRAY + "#" + (i + 1) + " " + ChatColor.YELLOW + entry.getKey().getName() + ChatColor.GRAY + " - " + ChatColor.YELLOW + entry.getValue() + " puntos"));
+                }
+
+                if (remainingTimeSecs <= 0 || (players.size() <= 1 && playersCountOnBegin > 1)) {
+                    status = ArenaStatus.RESULTS;
+                    break;
                 }
 
                 for (Player player : players) {
@@ -338,6 +349,11 @@ public class Arena extends BukkitRunnable {
                             .max(Map.Entry.comparingByValue())
                             .map(Map.Entry::getKey)
                             .orElse(null);
+
+                    if(winningPlayer == null) {
+                        status = ArenaStatus.END;
+                        break;
+                    }
 
                     for (Player player : players) {
                         player.getInventory().clear();
@@ -478,6 +494,24 @@ public class Arena extends BukkitRunnable {
 
             entity.setGlowing(true);
         });
+    }
+
+    public void notifyItemInteract(Player player, ItemStack item) {
+        if(item.getItemMeta().getDisplayName().equals(exitItem.getItemMeta().getDisplayName()) && status == ArenaStatus.LOBBY) {
+            World spawnWorld = Bukkit.getWorld("world");
+            Location spawnLocation = spawnWorld.getSpawnLocation();
+
+            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacy(""));
+            player.teleport(spawnLocation);
+            player.getInventory().clear();
+
+            sidebar.removePlayer(player);
+            players.remove(player);
+
+            for(Player p : players) {
+                p.sendMessage(ChatColor.RED + player.getName() + " ha salido de la partida. (" + (players.size()) + "/" + manager.getMaxPlayersPerArena() + ")");
+            }
+        }
     }
 
     public double elapsedSecondsSinceCreation() {

@@ -5,6 +5,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.deltacv.colina.arena.Arena;
 import org.deltacv.colina.arena.ArenaManager;
@@ -41,6 +42,19 @@ public final class Colina extends JavaPlugin implements Listener {
         for(Arena arena : arenaManager.activeArenas.keySet()) {
             if(arena.players.contains(p)) {
                 e.setCancelled(true);
+                return;
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerItemInteract(PlayerInteractEvent e) {
+        Player p = e.getPlayer();
+
+        for(Arena arena : arenaManager.activeArenas.keySet()) {
+            if(arena.players.contains(p)) {
+                e.setCancelled(true);
+                arena.notifyItemInteract(p, e.getItem());
                 return;
             }
         }
