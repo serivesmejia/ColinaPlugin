@@ -96,14 +96,19 @@ public class Arena extends BukkitRunnable {
             player.setHealth(20);
             player.setSaturation(20);
 
-            if(!player.isOnline()) {
-                playersToRemove.add(player);
+            if(!player.isOnline() || player.getWorld() != lobbyLocation.getWorld()) {
+                if(!playersToRemove.contains(player)) {
+                    playersToRemove.add(player);
+                }
             }
         }
 
         for (Player player : playersToRemove) {
             players.remove(player);
             sidebar.removePlayer(player);
+            player.getInventory().clear();
+
+            manager.econ.withdrawPlayer(player, manager.econ.getBalance(player));
 
             for (Player p : players) {
                 p.sendMessage(ChatColor.YELLOW + player.getName() + " ha abandonado la partida. (" + players.size() + "/" + manager.getMaxPlayersPerArena() + ")");
@@ -142,11 +147,11 @@ public class Arena extends BukkitRunnable {
             }
 
             case STARTING -> {
-                if(players.size() < manager.getMinPlayersPerArena()) {
+                if (players.size() < manager.getMinPlayersPerArena()) {
                     startingCountdownTimestamp = -1;
                     status = ArenaStatus.LOBBY;
 
-                    for(Player player : players) {
+                    for (Player player : players) {
                         player.sendMessage(ChatColor.RED + "No hay suficientes jugadores para empezar la partida.");
                     }
 
@@ -163,8 +168,8 @@ public class Arena extends BukkitRunnable {
                 int seconds = 5 - (int) elapsedSecondsSinceStartingCountdown();
 
                 if (seconds == 0) {
-                    for(Player player : players) {
-                        for(int i = 0; i < 20; i++) {
+                    for (Player player : players) {
+                        for (int i = 0; i < 20; i++) {
                             player.sendMessage("");
                         }
                     }
@@ -319,6 +324,8 @@ public class Arena extends BukkitRunnable {
                     if (System.currentTimeMillis() - lastZoneAwardTimestamp > 1000) {
                         if (isInsideZone) {
                             int score = playerScores.getOrDefault(player, 0) + 1;
+                            manager.econ.depositPlayer(player, 1);
+
                             playerScores.put(player, score);
                             // noteblock tick
                             player.playSound(player.getLocation(), "block.note_block.hat", 1, 1);
@@ -337,7 +344,7 @@ public class Arena extends BukkitRunnable {
             }
 
             case RESULTS -> {
-                if(players.isEmpty()) {
+                if (players.isEmpty()) {
                     status = ArenaStatus.END;
                     break;
                 }
@@ -350,7 +357,7 @@ public class Arena extends BukkitRunnable {
                             .map(Map.Entry::getKey)
                             .orElse(null);
 
-                    if(winningPlayer == null) {
+                    if (winningPlayer == null) {
                         status = ArenaStatus.END;
                         break;
                     }
@@ -361,8 +368,7 @@ public class Arena extends BukkitRunnable {
                         player.sendMessage(ChatColor.YELLOW + "" + ChatColor.BOLD + "¡" + winningPlayer.getName() + " ha ganado la partida!");
                     }
 
-                    manager.econ.depositPlayer(winningPlayer, 1);
-                    winningPlayer.sendMessage(ChatColor.GREEN + "Has ganado 1 punto por ganar la partida.");
+                    // winningPlayer.sendMessage(ChatColor.GREEN + "Has ganado 1 punto por ganar la partida.");
                 } else {
                     for (Player player : players) {
                         player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacy(ChatColor.YELLOW + "" + ChatColor.BOLD + "¡" + winningPlayer.getName() + " ha ganado la partida!"));
@@ -396,7 +402,8 @@ public class Arena extends BukkitRunnable {
             }
 
             case END -> {
-                for(Player player : players) {
+                for (Player player : players) {
+                    manager.econ.withdrawPlayer(player, manager.econ.getBalance(player));
                     player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacy(""));
                 }
 
@@ -497,18 +504,22 @@ public class Arena extends BukkitRunnable {
     }
 
     public void notifyItemInteract(Player player, ItemStack item) {
-        if(item.getItemMeta().getDisplayName().equals(exitItem.getItemMeta().getDisplayName()) && status == ArenaStatus.LOBBY) {
+        if (item == null) {
+            return;
+        }
+
+        if (item.getItemMeta().getDisplayName().equals(exitItem.getItemMeta().getDisplayName()) && status == ArenaStatus.LOBBY) {
             World spawnWorld = Bukkit.getWorld("world");
             Location spawnLocation = spawnWorld.getSpawnLocation();
 
             player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacy(""));
             player.teleport(spawnLocation);
-            player.getInventory().clear();
 
-            sidebar.removePlayer(player);
-            players.remove(player);
+            if (!playersToRemove.contains(player)) {
+                playersToRemove.add(player);
+            }
 
-            for(Player p : players) {
+            for (Player p : players) {
                 p.sendMessage(ChatColor.RED + player.getName() + " ha salido de la partida. (" + (players.size()) + "/" + manager.getMaxPlayersPerArena() + ")");
             }
         }
