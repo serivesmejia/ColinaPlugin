@@ -52,6 +52,8 @@ public class Arena extends BukkitRunnable {
     long resultsTimestamp = -1;
     long resultsLastFireworkTimestamp = System.currentTimeMillis();
 
+    Player glowingPlayer;
+
     int playersCountOnBegin = -1;
     Player winningPlayer = null;
 
@@ -293,6 +295,17 @@ public class Arena extends BukkitRunnable {
                     Map.Entry<Player, Integer> entry = topScores.get(i);
                     // sidebar with #n player name and score
                     sidebar.line(6 + i, Component.text(ChatColor.GRAY + "#" + (i + 1) + " " + ChatColor.YELLOW + entry.getKey().getName() + ChatColor.GRAY + " - " + ChatColor.YELLOW + entry.getValue() + " puntos"));
+                }
+
+                Player topPlayer = topScores.stream().findFirst().map(Map.Entry::getKey).orElse(null);
+
+                if(topPlayer != null) {
+                    if(glowingPlayer != null && glowingPlayer != topPlayer) {
+                        glowingPlayer.setGlowing(false);
+                        topPlayer.setGlowing(true);
+                    }
+
+                    glowingPlayer = topPlayer;
                 }
 
                 if (remainingTimeSecs <= 0 || (players.size() <= 1 && playersCountOnBegin > 1)) {
